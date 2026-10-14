@@ -1,0 +1,44 @@
+services:
+  rpc-server:
+    build: ./rpc
+    container_name: rpc-server
+    ports:
+      - "8000:8000"
+
+  rpc-client:
+    build: ./rpc
+    container_name: rpc-client
+    command: ["python", "-u", "client.py", "11"]
+    environment:
+      - RPC_HOST=rpc-server
+    depends_on:
+      - rpc-server
+    restart: "no"
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mqtt-broker
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mq/mosquitto.conf:/mosquitto/config/mosquitto.conf
+
+  receiver:
+    build: ./mq
+    container_name: mqtt-receiver
+    command: ["python", "-u", "receiver.py"]
+    environment:
+      - BROKER_ADDRESS=mosquitto
+    depends_on:
+      - mosquitto
+    restart: on-failure
+
+  sender:
+    build: ./mq
+    container_name: mqtt-sender
+    command: ["python", "-u", "sender.py"]
+    environment:
+      - BROKER_ADDRESS=mosquitto
+    depends_on:
+      - mosquitto
+    restart: on-failure
